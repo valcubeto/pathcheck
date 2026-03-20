@@ -1,100 +1,76 @@
-use crate::strings::*;
-use crate::utils::stdout_is_tty;
+use crate::strings;
+use crate::utils::{ green, red };
 use clap::{ Parser, ValueEnum };
-use owo_colors::OwoColorize;
 
 #[derive(Parser, Debug)]
-#[command(version, about, long_about = "test")]
+#[command(version, about, after_long_help = { strings::AFTER_HELP.trim_matches('\n') })]
 pub struct Args {
-    /// Enumerate paths.
-    #[arg(short = 'e', long = "enumerate")]
+    #[arg(long = "color", value_enum, default_value = "auto", alias = "colors", id = "WHEN")]
+    pub colorize: WhenColors,
+
+    /// Enumerate paths
+    #[arg(short, long)]
     pub enumerate: bool,
 
     /// Pad numbers with zeroes instead of spaces.
-    #[arg(short = 'z', long = "zero-padding")]
+    #[arg(short, long)]
     pub zero_padding: bool,
 
-    /// Disable path quoting.
-    #[arg(short = 'Q', long = "no-quotes")]
-    pub no_quoting: bool,
-
-    /// Do not perform status calculations.
-    #[arg(short = 'S', long = "no-status")]
-    pub no_status: bool,
-
-    #[arg(
-        value_enum,
-        short = 's',
-        long = "status-style",
-        default_value_t = StatusStyle::Text
-    )]
+    #[arg(short, long, value_enum, default_value = "text", id = "STYLE")]
     pub status_style: StatusStyle,
 
-    /// Disable colors
-    #[arg(short = 'C', long = "no-colors")]
-    pub no_colors: bool,
+    /// Self-explanatory
+    #[arg(short = 'd', long)]
+    pub show_status_description: bool,
 
+    /// Specify a format for each path
     #[arg(
-        value_enum,
-        short = 'c',
-        long = "colors",
-        default_value_t = WhenColors::Auto
+        long,
+        default_value = "{line :0}{status :<}{path}",
+        hide_default_value = true
     )]
-    pub colors: WhenColors
+    pub format: String,
+
+    // pub hide_invalid_paths
+    // pub no_duplicates: bool
 }
 
 #[derive(ValueEnum, Debug, Clone)]
 pub enum StatusStyle {
-    NerdFont,
+    Icons,
     Emoji,
     Text,
     None,
 }
 
 impl StatusStyle {
-    pub fn get_status_str(&self, colorize: bool) -> (String, String) {
+    #[inline]
+    pub fn is_none(&self) -> bool {
+        matches!(self, Self::None)
+    }
+
+    pub fn get_status_str(&self, colorize: WhenColors) -> Option<(String, String)> {
         match self {
-            StatusStyle::NerdFont if colorize => (
-                NF_OK.green().to_string(),
-                NF_ERR.red().to_string()
-            ),
-            StatusStyle::NerdFont => (
-                NF_OK.into(),
-                NF_ERR.into()
-            ),
-            StatusStyle::Text if colorize => (
-                TEXT_OK.green().to_string(),
-                TEXT_ERR.red().to_string()
-            ),
-            StatusStyle::Text => (
-                TEXT_OK.into(),
-                TEXT_ERR.into()
-            ),
-            StatusStyle::Emoji => (
-                EMOJI_OK.into(),
-                EMOJI_ERR.into()
-            ),
-            StatusStyle::None => (
-                String::new(),
-                String::new()
-            )
+            StatusStyle::Icons => Some((
+                green(strings::OK_ICON, colorize),
+                red(strings::ERR_ICON, colorize)
+            )),
+            StatusStyle::Text => Some((
+                green(strings::OK_TEXT, colorize),
+                red(strings::ERR_TEXT, colorize)
+            )),
+            StatusStyle::Emoji => Some((
+                strings::OK_EMOJI.to_string(),
+                strings::ERR_EMOJI.to_string()
+            )),
+            StatusStyle::None => None
         }
     }
 }
 
-#[derive(ValueEnum, Debug, Clone)]
+#[derive(ValueEnum, Debug, Clone, Copy)]
 pub enum WhenColors {
+    Never,
     Always,
     Auto,
-    Never,
-}
-
-impl WhenColors {
-    pub fn check_colorize(&self) -> bool {
-        match self {
-            WhenColors::Always => true,
-            WhenColors::Never => false,
-            WhenColors::Auto => stdout_is_tty()
-        }
-    }
 }

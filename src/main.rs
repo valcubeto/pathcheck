@@ -1,38 +1,38 @@
 mod args;
 mod strings;
 mod utils;
+mod formatting;
 
-use std::{ env, fs, process::exit };
-use clap::Parser;
+use std::env;
+use std::fs;
+use std::process::exit;
+use std::path::PathBuf;
 use args::Args;
+use clap::Parser;
 
-#[cfg(unix)]
 fn main() {
+
     let args = Args::parse();
 
     // Only print with dev profile.
     #[cfg(debug_assertions)]
     println!("{args:?}");
 
-    // Please do this instead of using a match.
-    let Ok(path_str) = env::var("PATH") else {
+    let Some(path_str) = env::var_os("PATH") else {
         eprintln!("No $PATH variable found.");
         exit(libc::EINVAL);
     };
 
     let mut result = Ok(libc::EXIT_SUCCESS);
 
-    let colorize = if args.no_colors { false } else { args.colors.check_colorize() };
-
-    let paths: Vec<&str> = path_str.split(':').collect();
+    let paths: Vec<PathBuf> = env::split_paths(&path_str).collect();
     let num_padding = paths.len().to_string().len();
 
     for (i, path) in paths.iter().enumerate() {
         let mut output = String::new();
 
         if args.enumerate {
-            // I wish there was a pad_left function.
-            // I'm forced to use this weird fmt syntax.
+            // Weird fmt syntax.
             if args.zero_padding {
                 output.push_str(&format!("{i:0>x$}: ", x = num_padding));
             } else {
@@ -40,12 +40,12 @@ fn main() {
             }
         }
 
-        if !args.no_status {            
-            let (ok_str, err_str) = args.status_style
-                .get_status_str(colorize);
+        if !args.status_style.is_none() {            
+            let status_text = args.status_style
+                .get_status_str(args.colorize);
 
-            if !ok_str.is_empty() {
-                // I'm actually proud of this statement.
+            if let Some((ok_str, err_str)) = status_text {
+                // I changed this statement like 10 times.
                 let status_str = match fs::metadata(path) {
                     Ok(m) if m.is_dir() => ok_str,
                     Ok(_) => {
@@ -63,21 +63,24 @@ fn main() {
             }
         }
 
-        if args.no_quoting {
-            output.push_str(path);
+        let path_display: String = match path.to_str() {
+            Some(string) =>
+                string.chars()
+                    .flat_map(|ch| ch.escape_default())
+                    .collect(),
+            None => format!("{path:?}")
+        };
+
+        if path_display.is_empty() {
+            output.push_str("<empty>");
         } else {
-            output.push_str(&format!("{path:?}"));
+            output.push_str(&path_display);
         }
 
         println!("{output}");
     }
 
     exit(result.unwrap_or_else(|e| e.raw_os_error().unwrap_or(1)))
-}
-
-#[cfg(windows)]
-fn main() {
-    compile_error!("Windows is not yet implemented.");
 }
 
 #[cfg(not(any(unix, windows)))]

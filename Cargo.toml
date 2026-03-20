@@ -1,11 +1,11 @@
 [package]
 name = "path-cmd"
-version = "0.2.0"
+version = "1.0.0"
 edition = "2024"
 authors = ["valcubeto@gmail.com"]
-description = "A command to nicely display the directories listed in $PATH."
-categories = []
-keywords = []
+description = "Check the status of folders listed in $PATH."
+categories = ["command-line-utilities"]
+keywords = ["cli", "terminal"]
 license = "MIT"
 repository = "https://github.com/valcubeto/path-cmd"
 readme = "README.md"
@@ -16,9 +16,13 @@ path = "src/main.rs"
 
 [dependencies]
 libc = { version = "0.2.182", default-features = false }
-owo-colors = { version = "4.3.0", default-features = false }
+
+[dependencies.owo-colors]
+version = "4.3.0"
+default-features = false
+features = ["supports-colors"]
 
 [dependencies.clap]
 version = "4.5.60"
 default-features = false
-features = ["std", "derive", "suggestions", "usage", "help", "color"]
+features = ["std", "derive", "suggestions", "usage", "help"]

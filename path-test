@@ -1,0 +1,62 @@
+#!/bin/env bash
+
+get_length() {
+    printf "$1" | wc -m
+}
+
+get_file_count() {
+    printf "%s" $(( "$(test -d "$1" \
+        && find "$1" -maxdepth 1 | wc -l \
+        || printf 1)" - 1 ))
+}
+
+get_desc() {
+    if test -a "$1"; then
+        test -d "$1" \
+            && printf "Directory" \
+            || printf "Unknown"
+    else
+        printf "Does not exist"
+    fi
+}
+
+STATUS_LABEL="Status"
+PATH_LABEL="Path"
+FILE_COUNT_LABEL="Files"
+DESC_LABEL="Description"
+
+longest=0
+longest_file_count="$(get_length "$FILE_COUNT_LABEL")"
+longest_desc="$(get_length "$DESC_LABEL")"
+
+IFS=:
+for path in $PATH; do
+    len="$(get_length "$path")"
+    test "$longest" -lt "$len" \
+        && longest="$len"
+
+    file_count_len="$(get_length "$(get_file_count "$path")")"
+    test "$longest_file_count" -lt "$file_count_len" \
+        && longest_file_count="$file_count_len"
+
+    desc_len="$(get_length "$(get_desc "$path")")"
+    test "$longest_desc" -lt "$desc_len" \
+        && longest_desc="$desc_len"
+done
+
+printf "| $STATUS_LABEL | %-*s | %-*s | %-*s |\n" \
+    "$longest" "$PATH_LABEL" \
+    "$longest_file_count" "$FILE_COUNT_LABEL" \
+    "$longest_desc" "$DESC_LABEL"
+
+for path in $PATH; do
+    if test -d "$path"; then
+        printf "| OK     "
+    else
+        printf "| ERR    "
+    fi
+    printf "| %-*s | %-*s | %-*s |\n" \
+        "$longest" "$path" \
+        "$longest_file_count" "$(get_file_count "$path")" \
+        "$longest_desc" "$(get_desc "$path")"
+done
