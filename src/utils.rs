@@ -1,6 +1,11 @@
 use owo_colors::{ OwoColorize, Stream as OwoStream };
 use crate::args::WhenColors;
 
+pub fn fatal(msg: &str) -> ! {
+    eprintln!("Error: {msg}");
+    std::process::exit(libc::EINVAL)
+}
+
 pub fn green(text: &str, color: WhenColors) -> String {
     match color {
         WhenColors::Never => text.to_string(),
