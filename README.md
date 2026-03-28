@@ -38,41 +38,30 @@ ERR /snap/bin
 
 The `-e` flag enables enumeration, and the `-z` flag enables padding with zeroes instead of using spaces.
 
-The `-S` flag disables status calculation.
-
 The `-s` flag let's you change the status style between text, nerd font icons, emojis, or none (equivalent to `-S`).
 
-Use the `-c` flag to change color behavior. Possible values are `always`, `never`, `auto` (default).
+Use the `--color` flag to change color behavior.
 
-The `-C` flag disables coloring.
-
-**__All flags have their corresponding long form if you want to use them. Run `path -h` for more information.__**
+**Run `path --help` for more information**.
 
 ### To simply display your paths:
 ```sh
-$ path -S
-/home/{user}/.cargo/bin
-/home/{user}/.bun/bin
-/usr/local/sbin
-/usr/local/bin
-/usr/sbin
-/usr/bin
-/sbin
-/bin
-/usr/games
-/usr/local/games
-/snap/bin
+path -S
 ```
 
 ### Exit codes
 This program does its best to exit with the code that corresponds to your system's standard. See `errno` for Linux-based systems and `net helpmsg` for Windows.
 
-Exit code 0 always means no errors.
+Exit code 0 means no errors.
 
 # Changelog
-- 0.1.0: Release.
-- 0.2.0: Fixed a little bug when exiting with a "not a directory" status code.
+## v0.1.0
+- Release.
+## v0.2.0
+- Fixed a bug when exiting with a "not a directory" status code.
+## v1.0.0 (not released yet)
+- Flag improvements.
+- Added formatting with the `--format` flag.
 
 # TODO
-- Organize with Unix/Windows folders.
-- Add a --verbose flag showing what's wrong with the paths.
+- Release v1.0.0
