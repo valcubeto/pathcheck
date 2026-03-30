@@ -31,19 +31,19 @@ fn main() {
     let paths: Vec<_> = split_paths(&path_str).collect();
     let num_padding = paths.len().to_string().len();
 
-    let mut lengths = LongestValueSizes::default();
+    let mut lvs = LongestValueSizes::default();
     let mut lines: Vec<Variables> = vec![];
 
     for (i, path) in paths.iter().enumerate() {
         let line = args.enumerate.then(|| {
             // Weird fmt syntax.
             let line = if args.zero_padding {
-                format!("{:0>x$}: ", i + 1, x = num_padding)
+                format!("{:0>x$}", i + 1, x = num_padding)
             } else {
-                format!("{: >x$}: ", i + 1, x = num_padding)
+                format!("{: >x$}", i + 1, x = num_padding)
             };
-            if line.len() > lengths.line {
-                lengths.line = line.len();
+            if line.len() > lvs.line {
+                lvs.line = line.len();
             }
             line
         });
@@ -63,8 +63,8 @@ fn main() {
                         err_str
                     }
                 };
-                if status.len() > lengths.status {
-                    lengths.status = status.len();
+                if status.len() > lvs.status {
+                    lvs.status = status.len();
                 }
                 status
             });
@@ -74,8 +74,8 @@ fn main() {
                 let path: String = string.chars()
                     .flat_map(|ch| ch.escape_default())
                     .collect();
-                if path.len() > lengths.path {
-                    lengths.path = path.len()
+                if path.len() > lvs.path {
+                    lvs.path = path.len()
                 }
                 path
             }
@@ -99,7 +99,7 @@ fn main() {
     }
 
     for vars in lines {
-        let output = format_line(&args.format, vars, &lengths);
+        let output = format_line(&args.format, vars, &lvs);
         println!("{output}");
     }
 

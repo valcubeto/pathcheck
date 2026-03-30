@@ -26,7 +26,7 @@ pub struct ParsedArgs {
     /// Specify a format for each path
     #[arg(
         long,
-        default_value = "{line }{status :<}{path:<}{ description}",
+        default_value = strings::DEFAULT_FORMAT,
         hide_default_value = true
     )]
     pub format: String,

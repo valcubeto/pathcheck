@@ -1,180 +1,5 @@
-#![allow(clippy::while_let_on_iterator)]
-
 use crate::utils::fatal;
-use std::{ iter::Peekable, str::Chars };
-
-// todo: rewrite as a Parser struct
-
-struct FormatParser<'a> {
-    pub(self) chars: Peekable<Chars<'a>>,
-    pub(self) vars: Variables,
-    pub(self) lengths: &'a LongestValueSizes
-}
-
-impl<'a> FormatParser<'a> {
-    pub fn next(&mut self) -> Option<char> {
-        self.chars.next()
-    }
-
-    #[must_use]
-    pub fn peek(&mut self) -> Option<char> {
-        self.chars.peek().copied()
-    }
-
-    fn parse_word(&mut self) -> String {
-        let mut word = String::new();
-        while let Some(letter) = self.peek() {
-            if !letter.is_alphabetic() {
-                break;
-            }
-            self.next();
-            word.push(letter);
-        }
-        word
-    }
-
-    pub fn parse(&mut self) -> String {
-        let mut parts: Vec<Component> = vec![];
-        while let Some(ch) = self.next() {
-            if ch == '{' {
-                let interpolation = self.parse_interpolation();
-                parts.push(Component::Interpolation(interpolation));
-                continue
-            }
-
-            let mut acc = String::from(ch);
-            while let Some(ch) = self.peek() {
-                if ch == '{' {
-                    break;
-                }
-                if ch == '\\' {
-                    self.next();
-                    if let Some(ch) = self.next() {
-                        acc.push(ch);
-                    }
-                } else {
-                    acc.push(ch);
-                    self.next();
-                }
-            }
-            parts.push(Component::Text(acc));
-        }
-
-        println!("{parts:#?}");
-        let mut line = String::new();
-
-        for comp in parts.iter() {
-            line.push_str(match comp {
-                Component::Text(text) => text,
-                Component::Interpolation(interp) => interp.as_ref().map(|s| s.as_str()).unwrap_or("(no var)")
-            });
-        }
-
-        line
-    }
-
-    fn parse_escaped(&mut self) -> Option<char> {
-        self.next();
-        self.next().map(|ch| match ch {
-            'n' => '\n',
-            't' => '\t',
-            'r' => '\r',
-            ch  => ch
-        })
-    }
-
-    fn parse_interpolation(&mut self) -> Option<String> {
-        let mut lhs   = String::new();
-        let mut value = String::new();
-        let mut rhs   = String::new();
-
-        while let Some(ch) = self.peek() {
-            if ch.is_alphabetic() {
-                break;
-            }
-
-            if ch == '\\' {
-                self.parse_escaped()
-                    .inspect(|&ch| lhs.push(ch));
-                continue;
-            }
-
-            lhs.push(ch);
-            self.next();
-        }
-
-        while let Some(ch) = self.peek() {
-            match ch {
-                '}' => break,
-                letter if letter.is_alphabetic() => {
-                    let word = self.parse_word();
-                    let (var_value, max_length) = match word.as_str() {
-                        "path" => (
-                            Some(self.vars.path.clone()),
-                            self.lengths.path
-                        ),
-                        "line" => (
-                            self.vars.line.clone(),
-                            self.lengths.line
-                        ),
-                        "status" => (
-                            self.vars.status.clone(),
-                            self.lengths.status
-                        ),
-                        "description" => (
-                            self.vars.description.clone(),
-                            self.lengths.description
-                        ),
-                        other => fatal(&format!("invalid var name {other:?}"))
-                    };
-                    todo!("bad handling of empty vars");
-                    if let Some(var_value) = var_value && let Some(':') = self.peek() {
-                        self.next();
-                        match self.next() {
-                            // Idk how to format this.
-                            Some('<') => if let Some(ch) = self.peek() {
-                                let filler = if ch == '}' { ' ' } else {
-                                    self.next();
-                                    ch
-                                };
-                                self.next();
-                                value.push_str(&var_value);
-                                value.push_str(&filler.to_string().repeat(max_length - var_value.len()));
-                            } else {
-                                fatal("unclosed formatting");
-                            }
-                            Some('>') => if let Some(ch) = self.peek() {
-                                let filler = if ch == '}' { ' ' } else {
-                                    self.next();
-                                    ch
-                                };
-                                value.push_str(&filler.to_string().repeat(max_length - var_value.len()));
-                                value.push_str(&var_value);
-                            } else {
-                                fatal("unclosed formatting")
-                            },
-                            // Some('0') => todo!("0"),
-                            Some('}') => {
-                                // Empty formatting.
-                                break;
-                            }
-                            Some(other) => fatal(&format!("")),
-                            None => fatal("unclosed")
-                        }
-                    }
-                }
-                other => break
-            }
-            self.next();
-        }
-        if !value.is_empty() {
-            Some(format!("{lhs}{value}{rhs}"))
-        } else {
-            None
-        }
-    }
-
-}
+use lazy_regex::regex_replace_all;
 
 pub struct Variables {
     pub path: String,
@@ -191,19 +16,82 @@ pub struct LongestValueSizes {
     pub description: usize,
 }
 
-#[derive(Debug)]
-enum Component {
-    Text(String),
-    Interpolation(Option<String>)
+pub fn format_line(string: &str, vars: Variables, lvs: &LongestValueSizes) -> String {
+    let string = regex_replace_all!(
+        r"\((.*?)\{([a-z]+)(?::(.)(.)?)?\}(.*?)\)",
+        string,
+        |_whole, left, var_name, align, align_char, right| {
+            replacer(&vars, lvs, left, var_name, align, align_char, right)
+        }
+    );
+    let string = regex_replace_all!(
+        r"\{([a-z]+)(?::(.)(.)?)?\}",
+        string.as_ref(),
+        |_whole, var_name, align, align_char: &str| {
+            replacer(&vars, lvs, "", var_name, align, align_char, "")
+        }
+    );
+    string.into_owned()
 }
 
-pub fn format_line(fmt_string: &str, vars: Variables, lengths: &LongestValueSizes) -> String {
-    let mut parser = FormatParser {
-        chars: fmt_string.chars().peekable(),
-        vars,
-        lengths
-    };
+fn replacer(vars: &Variables, lvs: &LongestValueSizes, left: &str, var_name: &str, align: &str, align_char: &str, right: &str) -> String {
+            if let (Some(value), min_size) = value_and_min_size(vars, lvs, var_name) {
+                let align_char = if align_char.is_empty() { " " } else { align_char };
+                let value = match align {
+                    "" => value,
+                    "<" => align_left(value.as_str(), min_size, align_char),
+                    ">" => align_right(value.as_str(), min_size, align_char),
+                    "-" => align_center(value.as_str(), min_size, align_char),
+                    _ => fatal(format!("Invalid formatting `{align}` (valid ones are: `<`, `>`, `-`)"))
+                };
+                format!("{left}{value}{right}")
+            } else {
+                String::new()
+            }
+        }
 
-    parser.parse()
+fn value_and_min_size(vars: &Variables, lvs: &LongestValueSizes, name: &str) -> (Option<String>, usize) {
+    match name {
+        "path" => (Some(vars.path.clone()), lvs.path),
+        "line" => (vars.line.clone(), lvs.line),
+        "status" => (vars.status.clone(), lvs.status),
+        "description" => (vars.description.clone(), lvs.description),
+        _ => {
+            // println!("(Warning: unknown variable in format string {name:?}, ignored)");
+            (None, 0)
+        }
+    }
 }
 
+fn align_left(string: &str, min_size: usize, align_char: &str) -> String {
+    let mut output = String::with_capacity(min_size);
+    output.push_str(string);
+    if min_size > string.len() {
+        let diff = min_size - string.len();
+        output.push_str(align_char.repeat(diff).as_str());
+    }
+    output
+}
+
+fn align_right(string: &str, min_size: usize, align_char: &str) -> String {
+    let mut output = String::with_capacity(min_size);
+    if min_size > string.len() {
+        let diff = min_size - string.len();
+        output.push_str(align_char.repeat(diff).as_str());
+    }
+    output.push_str(string);
+    output
+}
+
+fn align_center(string: &str, min_size: usize, align_char: &str) -> String {
+    let mut output = String::with_capacity(min_size);
+    if min_size > string.len() {
+        let diff = (min_size - string.len()) as f64 / 2.0;
+        output.push_str(&align_char.repeat(diff.floor() as usize));
+        output.push_str(string);
+        output.push_str(&align_char.repeat(diff.ceil() as usize));
+    } else {
+        output.push_str(string);
+    }
+    output
+}

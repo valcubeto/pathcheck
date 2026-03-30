@@ -1,7 +1,8 @@
-use owo_colors::{ OwoColorize, Stream as OwoStream };
 use crate::args::WhenColors;
+use std::fmt::Display;
+use owo_colors::{ OwoColorize, Stream as OwoStream };
 
-pub fn fatal(msg: &str) -> ! {
+pub fn fatal<D: Display>(msg: D) -> ! {
     eprintln!("Error: {msg}");
     std::process::exit(libc::EINVAL)
 }

@@ -15,6 +15,7 @@ name = "path"
 path = "src/main.rs"
 
 [dependencies]
+lazy-regex = "3.6.0"
 libc = { version = "0.2.182", default-features = false }
 
 [dependencies.owo-colors]

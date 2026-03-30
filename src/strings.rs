@@ -1,3 +1,5 @@
+pub const DEFAULT_FORMAT: &str = "({line:<}: )({status:<} ){path}";
+
 pub const AFTER_HELP: &str = r#"
 This program supports NO_COLOR (see https://nocolor.org)
 
