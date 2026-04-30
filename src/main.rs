@@ -132,6 +132,10 @@ fn main() {
             if status_len > lvs.status {
                 lvs.status = status_len;
             }
+            let description_len = visible_len(&description);
+            if description_len > lvs.description {
+                lvs.description = description_len;
+            }
         });
 
         lines.push(Variables {
@@ -168,5 +172,5 @@ fn main() {
         println!("{valid_paths} valid paths.");
     }
 
-    std::process::exit(exit_code);
+    std::process::exit(if args.succeed { 0 } else { exit_code });
 }

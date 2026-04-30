@@ -1,5 +1,5 @@
 run:
-    @ cargo run --quiet --release
+    @ cargo run --quiet --release -- --succeed
 
 run-icons:
     @ cargo run --quiet --release -- --status-style icons

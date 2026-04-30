@@ -51,6 +51,10 @@ pub struct ProgramFlags {
           hide_default_value = true)]
     pub format: String,
 
+    /// Always exit with code 0
+    #[arg(long)]
+    pub succeed: bool,
+
     // pub hide_invalid_paths
     // pub no_duplicates: bool
 }

@@ -1,6 +1,6 @@
 [package]
 name = "pathcheck"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2024"
 authors = ["valcubeto@proton.me"]
 description = "Check the status of folders listed in $PATH."

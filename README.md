@@ -2,14 +2,12 @@
 Parse your `PATH` variable and check the status of each path.
 
 # Installation
-### Debian/Ubuntu based systems:
-todo
-### Arch based systems:
-todo
 ### Cargo (build from source in any system)
 ```sh
 cargo install pathcheck
 ```
+### Other
+No more options at the moment. Releasing is tricky.
 
 This will install the `pathcheck` command in `$CARGO_HOME/bin/`.
 
